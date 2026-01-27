@@ -83,9 +83,7 @@ function renderTodos() {
     const btn = document.createElement("button");
     btn.textContent = item.done ? "未達に戻す" : "達成";
     btn.onclick = () => {
-      item.done = !item.done;
-      saveSchedules();  
-
+      item.done = !item.done;  
       renderTodos();
       drawLineChart();
     };
@@ -205,3 +203,4 @@ window.onload = () => {
   schedules = loadSchedules();
   renderCalendar();
 };
+
