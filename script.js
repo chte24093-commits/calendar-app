@@ -1,17 +1,29 @@
 const calendar = document.getElementById("calendar");
 const selectedDateText = document.getElementById("selected-date");
 const todoInput = document.getElementById("todo-input");
+const memoInput = document.getElementById("memo-input");
 const addBtn = document.getElementById("add-btn");
 const todoList = document.getElementById("todo-list");
-let selectedDate = null;
 
+let selectedDate = null;
 let currentYear;
 let currentMonth;
 
-// 日付ごとの予定データ
-const schedules = {};
+// ===== 予定データ（localStorage対応）=====
+let schedules = {};
 
-// カレンダー生成
+// 保存
+function saveSchedules() {
+  localStorage.setItem("calendarSchedules", JSON.stringify(schedules));
+}
+
+// 読み込み
+function loadSchedules() {
+  const data = localStorage.getItem("calendarSchedules");
+  return data ? JSON.parse(data) : {};
+}
+
+// ===== カレンダー生成 =====
 function createCalendar() {
   calendar.innerHTML = "";
 
@@ -40,6 +52,7 @@ function createCalendar() {
   }
 }
 
+// ===== 月切り替え =====
 document.getElementById("prev-month").onclick = () => {
   currentMonth--;
   if (currentMonth < 0) {
@@ -47,6 +60,7 @@ document.getElementById("prev-month").onclick = () => {
     currentYear--;
   }
   createCalendar();
+  drawLineChart();
 };
 
 document.getElementById("next-month").onclick = () => {
@@ -57,14 +71,12 @@ document.getElementById("next-month").onclick = () => {
   }
   createCalendar();
   drawLineChart();
-
 };
 
-
-// 予定表示
+// ===== 予定表示 =====
 function renderTodos() {
   todoList.innerHTML = "";
-  if (!schedules[selectedDate]) return;
+  if (!selectedDate || !schedules[selectedDate]) return;
 
   schedules[selectedDate].forEach((item) => {
     const li = document.createElement("li");
@@ -83,7 +95,8 @@ function renderTodos() {
     const btn = document.createElement("button");
     btn.textContent = item.done ? "未達に戻す" : "達成";
     btn.onclick = () => {
-      item.done = !item.done;  
+      item.done = !item.done;
+      saveSchedules();     // ★ 保存
       renderTodos();
       drawLineChart();
     };
@@ -95,10 +108,7 @@ function renderTodos() {
   });
 }
 
-
-// 予定追加
-const memoInput = document.getElementById("memo-input");
-
+// ===== 予定追加 =====
 addBtn.addEventListener("click", () => {
   if (!selectedDate) return;
   if (todoInput.value.trim() === "") return;
@@ -112,8 +122,8 @@ addBtn.addEventListener("click", () => {
     memo: memoInput.value,
     done: false
   });
-  saveSchedules();
 
+  saveSchedules();   // ★ 保存
 
   todoInput.value = "";
   memoInput.value = "";
@@ -121,6 +131,7 @@ addBtn.addEventListener("click", () => {
   drawLineChart();
 });
 
+// ===== 達成率計算 =====
 function getDailyRates(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const rates = [];
@@ -132,19 +143,18 @@ function getDailyRates(year, month) {
     const list = schedules[dateStr];
 
     if (!list || list.length === 0) {
-      rates.push(null); // 予定なし
+      rates.push(null);
       continue;
     }
 
     const doneCount = list.filter(item => item.done).length;
-    const rate = (doneCount / list.length) * 100;
-    rates.push(rate);
+    rates.push((doneCount / list.length) * 100);
   }
 
   return rates;
 }
 
-
+// ===== 折れ線グラフ =====
 function drawLineChart() {
   const canvas = document.getElementById("statusChart");
   const ctx = canvas.getContext("2d");
@@ -156,7 +166,6 @@ function drawLineChart() {
   const graphWidth = canvas.width - padding * 2;
   const stepX = graphWidth / (rates.length - 1);
 
-  // 軸
   ctx.strokeStyle = "#aaa";
   ctx.beginPath();
   ctx.moveTo(padding, padding);
@@ -164,7 +173,6 @@ function drawLineChart() {
   ctx.lineTo(canvas.width - padding, canvas.height - padding);
   ctx.stroke();
 
-  // 折れ線
   ctx.strokeStyle = "#4caf50";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -191,16 +199,13 @@ function drawLineChart() {
   ctx.stroke();
 }
 
-
-
-// 今月を表示
-const now = new Date();
-currentYear = now.getFullYear();
-currentMonth = now.getMonth();
-createCalendar();
-
+// ===== 初期化 =====
 window.onload = () => {
-  schedules = loadSchedules();
-  renderCalendar();
+  schedules = loadSchedules();   // ★ 復元
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  createCalendar();
+  renderTodos();
+  drawLineChart();
 };
-
